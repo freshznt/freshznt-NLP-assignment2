@@ -33,10 +33,8 @@ class LDAC(object):
                 words = [word for word in txtData if word not in stopWords and not word.isspace()]
 
                 words = np.array(words)
-                tail = len(words) % self.docLength
-                if tail != 0:
-                    words = words[:-tail]
-                txtData = np.split(words, len(words) // self.docLength)
+                txtData = [words[i:i + self.docLength] for i in
+                           range(0, len(words) - len(words) % self.docLength, self.docLength)]
                 txtNameWithDatas.append((filePath.split('.txt')[0], txtData))
 
         sizeArray = np.array([len(tuple[1]) for tuple in txtNameWithDatas])
@@ -47,8 +45,8 @@ class LDAC(object):
             numArrayInt[maxErrorIdx] += 1
         for i, (label, docs) in enumerate(txtNameWithDatas):
             nowParagNums = numArrayInt[i]
-            sampleParagraphIdxArr = np.random.choice(range(len(docs)), size=int(nowParagNums), replace=False)
-            self.Dataset.extend([resDoc(label, docs[paragIdx]) for paragIdx in sampleParagraphIdxArr])
+            ticIdxArr = np.random.choice(range(len(docs)), size=int(nowParagNums), replace=False)
+            self.Dataset.extend([resDoc(label, docs[paragIdx]) for paragIdx in ticIdxArr])
 
     def LDAClassify(self):
         trainAccuracySum = 0
