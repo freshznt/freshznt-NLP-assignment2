@@ -97,35 +97,29 @@ if __name__ == '__main__':
     corpusFilePath = os.path.join(rootPath, 'corpus_utf8')
     stopWordsFilePath = os.path.join(rootPath, 'stopwords')
 
-    # 实验参数：
-    docNum = 1000  # 提取的段落数量
-    modeList = ['char', 'word']  # 划分模式
-    docLengthMap = {  # 段落长度
-        'char': [20, 100, 500, 1000, 3000],  # 以字划分可以多点
-        'word': [20, 100, 500, 1000]  # 以词划分不能太多
-    }
-    topicNumList = [30, 40, 60, 70, 80, 90]  # 话题数量
-    crossValNum = 10  # 交叉验证组数
-    resultFilePath = './LDAC.xlsx'  # 结果文件路径
+    docNum = 1000
+    modeList = ['char', 'word']
+    docLengthMap = {'char': [20, 100, 500, 1000, 3000], 'word': [20, 100, 500, 1000]}
+    topicNumList = [30, 40, 60, 70, 80, 90]
+    crossValNum = 10
+    resultFilePath = './LDAC.xlsx'
     resFileWriter = pd.ExcelWriter(resultFilePath, mode='w')
-    for mode in modeList:  # 遍历‘字’与‘词’模式
-        resultTrainDict: Dict[str, List[float]] = {}  # 用字典记录Train实验结果
-        resultTestDict: Dict[str, List[float]] = {}  # 用字典记录Test实验结果
-        docLengthList = docLengthMap[mode]
-        for docLength in docLengthList:  # 遍历不同的段落长度
-            resultTrainDict[str(docLength)] = []
-            resultTestDict[str(docLength)] = []
-            for topicNum in topicNumList:  # 遍历不同的话题数量
+
+    for mode in modeList:
+        resultTrainDict, resultTestDict = {}, {}
+        for docLength in docLengthMap[mode]:
+            resultTrainDict[str(docLength)], resultTestDict[str(docLength)] = [], []
+            for topicNum in topicNumList:
                 ldaCModel = LDAC(tokenMode=mode, docNum=docNum, docLength=docLength,
-                                                     topicNum=topicNum, crossValNum=crossValNum)
+                                 topicNum=topicNum, crossValNum=crossValNum)
                 ldaCModel.preprocessData(stopWordsPath=stopWordsFilePath, corpusPath=corpusFilePath)
                 meanTrain, meanTest = ldaCModel.LDAClassify()
                 print(f'Mode: {mode}, docLength: {docLength}, topicNum: {topicNum}:')
                 print(f'Average train accuracy: {meanTrain:.4f}, average test accuracy: {meanTest:.4f}')
                 resultTrainDict[str(docLength)].append(meanTrain)
                 resultTestDict[str(docLength)].append(meanTest)
-        trainDf = pd.DataFrame(resultTrainDict, index=topicNumList)
-        testDf = pd.DataFrame(resultTestDict, index=topicNumList)
-        trainDf.to_excel(resFileWriter, sheet_name=mode + 'train', index=True)
-        testDf.to_excel(resFileWriter, sheet_name=mode + 'test', index=True)
+
+        pd.DataFrame(resultTrainDict, index=topicNumList).to_excel(resFileWriter, sheet_name=mode + 'train', index=True)
+        pd.DataFrame(resultTestDict, index=topicNumList).to_excel(resFileWriter, sheet_name=mode + 'test', index=True)
+
     resFileWriter.close()
