@@ -21,7 +21,7 @@ class LDAC(object):
         for file in os.listdir(stopWordsPath):
             with open(os.path.join(stopWordsPath, file), 'r', encoding='utf-8') as stopWordFile:
                 stopWords.extend([line.strip() for line in stopWordFile.readlines()])
-        txtNameWithDatas = []
+        labeledDatas = []
         for filePath in os.listdir(corpusPath):
             with open(os.path.join(corpusPath, filePath), 'r', encoding='utf-8') as corpusFile:
                 rawTxt = corpusFile.read()
@@ -35,15 +35,15 @@ class LDAC(object):
                 words = np.array(words)
                 txtData = [words[i:i + self.docLength] for i in
                            range(0, len(words) - len(words) % self.docLength, self.docLength)]
-                txtNameWithDatas.append((filePath.split('.txt')[0], txtData))
+                labeledDatas.append((filePath.split('.txt')[0], txtData))
 
-        sizeArray = np.array([len(tuple[1]) for tuple in txtNameWithDatas])
+        sizeArray = np.array([len(tuple[1]) for tuple in labeledDatas])
         numArrayFloat = self.docNum * sizeArray / sizeArray.sum()
         numArrayInt = np.floor(numArrayFloat)
         while numArrayInt.sum() < self.docNum:
             maxErrorIdx = np.argmax(numArrayFloat - numArrayInt)
             numArrayInt[maxErrorIdx] += 1
-        for i, (label, docs) in enumerate(txtNameWithDatas):
+        for i, (label, docs) in enumerate(labeledDatas):
             nowParagNums = numArrayInt[i]
             ticIdxArr = np.random.choice(range(len(docs)), size=int(nowParagNums), replace=False)
             self.Dataset.extend([resDoc(label, docs[paragIdx]) for paragIdx in ticIdxArr])
@@ -104,9 +104,9 @@ if __name__ == '__main__':
     resFileWriter = pd.ExcelWriter(resultFilePath, mode='w')
 
     for mode in modeList:
-        resultTrainDict, resultTestDict = {}, {}
+        TrainDict, TestDict = {}, {}
         for docLength in docLengthMap[mode]:
-            resultTrainDict[str(docLength)], resultTestDict[str(docLength)] = [], []
+            TrainDict[str(docLength)], TestDict[str(docLength)] = [], []
             for topicNum in topicNumList:
                 ldaCModel = LDAC(tokenMode=mode, docNum=docNum, docLength=docLength,
                                  topicNum=topicNum, crossValNum=crossValNum)
@@ -114,10 +114,10 @@ if __name__ == '__main__':
                 meanTrain, meanTest = ldaCModel.LDAClassify()
                 print(f'Mode: {mode}, docLength: {docLength}, topicNum: {topicNum}:')
                 print(f'Average train accuracy: {meanTrain:.4f}, average test accuracy: {meanTest:.4f}')
-                resultTrainDict[str(docLength)].append(meanTrain)
-                resultTestDict[str(docLength)].append(meanTest)
+                TrainDict[str(docLength)].append(meanTrain)
+                TestDict[str(docLength)].append(meanTest)
 
-        pd.DataFrame(resultTrainDict, index=topicNumList).to_excel(resFileWriter, sheet_name=mode + 'train', index=True)
-        pd.DataFrame(resultTestDict, index=topicNumList).to_excel(resFileWriter, sheet_name=mode + 'test', index=True)
+        pd.DataFrame(TrainDict, index=topicNumList).to_excel(resFileWriter, sheet_name=mode + 'train', index=True)
+        pd.DataFrame(TestDict, index=topicNumList).to_excel(resFileWriter, sheet_name=mode + 'test', index=True)
 
     resFileWriter.close()
